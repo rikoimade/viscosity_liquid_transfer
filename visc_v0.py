@@ -7,14 +7,14 @@ Created on Tue Feb  7 13:30:22 2023
 The following script will try to suggest the optimize parameters to reach 
 desired transfer mass
 
-user input: 'input_mass': the desired mass
+user input: 'm_expected': the desired mass
 optimized parameters : 
     - 'aspiration_rate', 
     - 'dispense_rate', 
     - 'delay_aspirate', 
     - 'delay_dispense',
     
-output: ['input_mass','aspiration_rate', 
+suggestion: ['m_expected','aspiration_rate', 
          'dispense_rate', 'delay_aspirate', 
          'delay_dispense'] % error
 training data: 817
@@ -76,7 +76,7 @@ class Squirt:
         self.fit(model_kind)
         
         
-        self.space = [Categorical([mass], name='input_mass'),
+        self.space = [Categorical([mass], name='m_expected'),
                       Real(self.asp_min, self.asp_max, name='aspiration_rate'),
                       Real(self.dsp_min, self.asp_max, name='dispense_rate'),
                       Real(self.asp_delay_min, self.asp_delay_max, name='delay_aspirate'),
@@ -93,7 +93,7 @@ class Squirt:
             #input_array = np.asarray(dx)
             
             X = self.scaler.transform(dx)
-            y = input_array['input_mass']
+            y = input_array['m_expected']
             
             pred = self.model.predict(X)
             
@@ -117,7 +117,10 @@ class Squirt:
             
         self.Xi_dict['%error'] = self.fun
         
-        print(self.Xi_dict)
+        print('\nNext Run:')
+        
+        for k in self.Xi_dict.keys():
+            print('{:>15}\t: {:.3f}'.format(k, self.Xi_dict[k]))
         return self.Xi, self.fun
     
     def fit(self, kind='lin'):
@@ -156,10 +159,10 @@ class Squirt:
  
 if __name__ == '__main__':   
     df = pd.read_csv('practice_data.csv')
-    df['output_mass'] = df['input_mass']*(1-df['%error']/100)
     
-    features = ['input_mass','aspiration_rate', 'dispense_rate', 'delay_aspirate', 'delay_dispense']
-    target='output_mass'
+    
+    features = ['m_expected','aspiration_rate', 'dispense_rate', 'delay_aspirate', 'delay_dispense']
+    target='m_measured'
     # %%
     
     liq = Squirt()

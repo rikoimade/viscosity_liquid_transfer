@@ -104,7 +104,7 @@ class Squirt:
         
         self.res = gp_minimize(obj_func, 
                           self.space, 
-                          n_calls=20, 
+                          n_calls=50, 
                           #x0 = np.asarray(self.df[self.features]),
                           #y0 = self.y_train.reshape(-1,1)
                           )
@@ -123,7 +123,7 @@ class Squirt:
             print('{:>15}\t: {:.3f}'.format(k, self.Xi_dict[k]))
         return self.Xi, self.fun
     
-    def fit(self, kind='lin'):
+    def fit(self, kind='gpr'):
         '''
         lin: linear
         gpr: gpr
@@ -166,9 +166,10 @@ if __name__ == '__main__':
     # %%
     
     liq = Squirt()
+    liq.name = 'Not-unknown'
     liq.features = features
     liq.df = df
     liq.target = target
     
-    liq.calibrate(300) ## input desired mass, 
+    liq.calibrate(.8) ## input desired mass, 
 

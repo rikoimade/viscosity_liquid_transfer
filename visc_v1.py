@@ -2,7 +2,7 @@
 """
 Created on Tue Feb  7 13:30:22 2023
 
-@author: rikoim
+@author: riko i made
 
 The following script will try to suggest the optimize parameters to reach 
 desired transfer mass
@@ -190,5 +190,5 @@ if __name__ == '__main__':
     liq.df = df
     liq.target = target
     
-    liq.calibrate(volume = 1000) ## input desired mass, 
+    liq.calibrate() ## input volume, when blank it will chose a value between 100 - 1000 uL, 
 

@@ -7,8 +7,7 @@ Created on Tue Feb  7 13:30:22 2023
 The following script will try to suggest the optimize parameters to reach 
 desired transfer mass
 
-user input: 'm_expected': the desired mass
-optimized parameters : 
+user input:  
     - 'aspiration_rate', 
     - 'dispense_rate', 
     - 'delay_aspirate', 
@@ -62,7 +61,7 @@ class Squirt:
     def __init__(self, name = 'Unknown'):
         self.name = name
     
-    def calibrate(self, volume_list = list(np.linspace(100,1000,10)), model_kind='gpr'):
+    def calibrate(self, volume = list(np.linspace(100,1000,10)), model_kind='gpr'):
         '''
         function to use to calibrate, to find the aspiration and dispense rate
         return: asp_rate, disp_rate
@@ -72,6 +71,9 @@ class Squirt:
         
         volume_list: insert volume as a list
         '''
+        
+        if type(volume) != list: volume=[volume]
+        
         from warnings import filterwarnings 
         filterwarnings("ignore")
         
@@ -82,7 +84,7 @@ class Squirt:
         self.fit(model_kind)
         
         
-        self.space = [Categorical(volume_list, name='volume'),
+        self.space = [Categorical(volume, name='volume'),
                       Real(self.asp_min, self.asp_max, name='aspiration_rate'),
                       Real(self.dsp_min, self.asp_max, name='dispense_rate'),
                       Real(self.asp_delay_min, self.asp_delay_max, name='delay_aspirate'),
@@ -115,22 +117,28 @@ class Squirt:
                           #x0 = np.asarray(self.df[self.features]),
                           #y0 = self.y_train.reshape(-1,1)
                           )
-        self.Xi = self.res.x
-        self.fun = self.res.fun
-        self.Xi_dict = {}
+                          
+        self.out_df = pd.DataFrame(data=self.res.x_iters)
+        self.out_df.columns = self.features
+        self.out_df['%error'] = self.model.predict(self.scaler.transform(self.out_df[self.features]))
+        self.out_df['abs-err'] = abs(self.out_df['%error'])
+        self.out_df['oo'] = self.out_df['volume']/self.out_df['aspiration_rate'] \
+                            + self.out_df['volume']/self.out_df['dispense_rate'] \
+                                + self.out_df['delay_aspirate'] + self.out_df['delay_dispense']
         
-        for i, k in enumerate(self.space):
-            self.Xi_dict[k.name] = self.Xi[i]
+        self.out_df.sort_values(by='abs-err', inplace=True)
+        self.out_df.reset_index(inplace=True, drop=True)
         
-        Xsug = np.asarray(self.res.x).reshape(1, -1)
-        Xsug = self.scaler.transform(Xsug)
-        self.Xi_dict['%error'] = self.model.predict(Xsug).item()
+        self.out_df2 = self.out_df.iloc[:10,:].copy()
+        self.out_df2.sort_values(by='oo', ascending=True, inplace=True)
+        self.out_df2.reset_index(inplace=True, drop=True)
+        
         
         print('\nNext Run:')
         
-        for k in self.Xi_dict.keys():
-            print('{:>15}\t: {:.3f}'.format(k, self.Xi_dict[k]))
-        return self.Xi, self.fun
+        for col in list(self.out_df2)[:-1]:
+            print('{:>15}\t: {:.3f}'.format(col, self.out_df.loc[0,col]))
+        #return out_df
     
     def fit(self, kind='gpr'):
         '''
@@ -182,5 +190,5 @@ if __name__ == '__main__':
     liq.df = df
     liq.target = target
     
-    liq.calibrate(volume_list = [1000]) ## input desired mass, 
+    liq.calibrate(volume = 1000) ## input desired mass, 
 

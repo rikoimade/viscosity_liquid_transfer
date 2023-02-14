@@ -13,7 +13,7 @@ user input:
     - 'delay_aspirate', 
     - 'delay_dispense',
     
-suggestion: ['m_expected','aspiration_rate', 
+suggestion: ['volume','aspiration_rate', 
          'dispense_rate', 'delay_aspirate', 
          'delay_dispense'] % error
 training data: 817

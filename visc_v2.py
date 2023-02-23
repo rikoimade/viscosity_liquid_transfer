@@ -17,6 +17,8 @@ suggestion: ['volume','aspiration_rate',
          'dispense_rate', 'delay_aspirate', 
          'delay_dispense'] % error
 training data: 817
+
+version 2: add blow out rate
 """
 
 import pandas as pd
@@ -55,6 +57,12 @@ class Squirt:
     dsp_delay_max = 5
     dsp_delay_min = 0
     
+    blowout_rate_min = 0
+    blowout_rate_max = 10
+    
+    blowout_delay_min = 0
+    blowout_delay_max = 10
+    
     vol_min = 100 # micro liter
     vol_max = 1000 # micro liter
     
@@ -88,7 +96,11 @@ class Squirt:
                       Real(self.asp_min, self.asp_max, name='aspiration_rate'),
                       Real(self.dsp_min, self.asp_max, name='dispense_rate'),
                       Real(self.asp_delay_min, self.asp_delay_max, name='delay_aspirate'),
-                      Real(self.dsp_delay_min, self.dsp_delay_max, name='delay_dispense'),]
+                      Real(self.dsp_delay_min, self.dsp_delay_max, name='delay_dispense'),
+                      Real(self.blowout_rate_min, self.blowout_rate_max, name='blow_out_rate'),
+                      Real(self.blowout_delay_min, self.blowout_delay_max, name='delay_blow_out')
+                      ]
+        
         @use_named_args(self.space)
         def obj_func(**input_array):
             dx = pd.DataFrame()
@@ -179,7 +191,9 @@ if __name__ == '__main__':
     
     
     features = ['volume',
-    'aspiration_rate', 'dispense_rate', 'delay_aspirate', 'delay_dispense']
+    'aspiration_rate', 'dispense_rate', 'delay_aspirate', 'delay_dispense', 
+    'blow_out_rate', 'delay_blow_out']
+    
     target='%error'
     # %%
     

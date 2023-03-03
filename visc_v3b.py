@@ -19,7 +19,15 @@ suggestion: ['volume','aspiration_rate',
 training data: 817
 
 version 2: add blow out rate
+
+version 3:
+        - blow out rate either none or range of value
+        - add init-value
+        
+version 3b:
+        - with blowout
 """
+script_ver = 'version 3b: with blowout'
 
 import pandas as pd
 import numpy as np
@@ -82,6 +90,8 @@ class Squirt:
         
         if type(volume) != list: volume=[volume]
         
+        
+        
         from warnings import filterwarnings 
         filterwarnings("ignore")
         
@@ -93,13 +103,17 @@ class Squirt:
         
         
         self.space = [Categorical(volume, name='volume'),
+                      
                       Real(self.asp_min, self.asp_max, name='aspiration_rate'),
                       Real(self.dsp_min, self.asp_max, name='dispense_rate'),
                       Real(self.asp_delay_min, self.asp_delay_max, name='delay_aspirate'),
                       Real(self.dsp_delay_min, self.dsp_delay_max, name='delay_dispense'),
+                      Categorical([0, 1], name='blowout_state'),
                       Real(self.blowout_rate_min, self.blowout_rate_max, name='blow_out_rate'),
                       Real(self.blowout_delay_min, self.blowout_delay_max, name='delay_blow_out')
                       ]
+        
+        
         
         @use_named_args(self.space)
         def obj_func(**input_array):
@@ -107,9 +121,9 @@ class Squirt:
             for key in input_array.keys():
                 
                 dx.loc[0,key] = input_array[key] 
-                
-            # print(dx)
-            #input_array = np.asarray(dx)
+            
+            dx.loc[dx['blowout_state'] == 0, ['blow_out_rate', 'delay_blow_out']] = 0
+
             
             X = self.scaler.transform(dx)
             
@@ -122,34 +136,48 @@ class Squirt:
             
             return out #pred.item()
         
+        #x0 = [list(x) for x in list(np.asarray(self.df[self.features]))]
+        #y0 = list(self.df[self.target])
+        
         self.res = gp_minimize(obj_func, 
                           self.space, 
-                          n_calls=50, 
-                          kappa = 1.96, # default 1.95 balanced between exploitation vs exploration
-                          #x0 = np.asarray(self.df[self.features]),
-                          #y0 = self.y_train.reshape(-1,1)
+                          n_calls=60, 
+                          kappa = 1.0, # default 1.95 balanced between exploitation vs exploration
+                          acq_func = 'EI',
+                          #x0 = x0,
+                          #y0 = y0, 
+                          random_state=123
                           )
                           
         self.out_df = pd.DataFrame(data=self.res.x_iters)
-        self.out_df.columns = self.features
+        self.out_df.columns = [n.name for n in self.space]#self.features
+        
+        
+        self.out_df.loc[self.out_df['blowout_state'] == 0, ['blow_out_rate', 'delay_blow_out']] =0
+            
+        
+        
         self.out_df['%error'] = self.model.predict(self.scaler.transform(self.out_df[self.features]))
         self.out_df['abs-err'] = abs(self.out_df['%error'])
         self.out_df['oo'] = self.out_df['volume']/self.out_df['aspiration_rate'] \
                             + self.out_df['volume']/self.out_df['dispense_rate'] \
                                 + self.out_df['delay_aspirate'] + self.out_df['delay_dispense']
+                                
+        # Filtering
         
-        self.out_df.sort_values(by='abs-err', inplace=True)
+        self.out_df.sort_values(by='abs-err', inplace=True) # sort based on error
         self.out_df.reset_index(inplace=True, drop=True)
         
-        self.out_df2 = self.out_df.iloc[:10,:].copy()
-        self.out_df2.sort_values(by='oo', ascending=True, inplace=True)
+        self.out_df2 = self.out_df.iloc[:5,:].copy()
+        
+        self.out_df2.sort_values(by='oo', ascending=True, inplace=True) ## sort based on time
         self.out_df2.reset_index(inplace=True, drop=True)
         
         
-        print('\nNext Run:')
+        print(f'\n {script_ver}\n Next Run:')
         
         for col in list(self.out_df2)[:-1]:
-            print('{:>15}\t: {:.3f}'.format(col, self.out_df2.loc[0,col]))
+            print('{:>15}\t: {:.1f}'.format(col, self.out_df2.loc[0,col]))
         #return out_df
     
     def fit(self, kind='gpr'):
@@ -192,6 +220,7 @@ if __name__ == '__main__':
     
     features = ['volume',
     'aspiration_rate', 'dispense_rate', 'delay_aspirate', 'delay_dispense', 
+    'blowout_state',
     'blow_out_rate', 'delay_blow_out']
     
     target='%error'
@@ -204,5 +233,6 @@ if __name__ == '__main__':
     liq.df = df
     liq.target = target
     
-    liq.calibrate(1000) ## input volume, when blank it will chose a value between 100 - 1000 uL, 
+   
+    liq.calibrate(volume=1000) ## input volume, when blank it will chose a value between 100 - 1000 uL, 
 
